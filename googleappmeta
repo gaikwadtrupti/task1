@@ -1,0 +1,172 @@
+Take stock price of any company you want and predicts its price by using LSTM . use only jupyter netbook code . 
+
+import numpy as np
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+
+import os
+import numpy as np
+import pandas as pd
+import math
+import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+from sklearn.linear_model import LinearRegression
+%matplotlib inline
+
+import warnings
+warnings.filterwarnings("ignore")  
+
+# Custom colors
+class clr:
+    S = '\033[1m' + '\033[94m'
+    E = '\033[0m'
+
+df_apple = pd.read_csv('APPL.csv')
+df_google = pd.read_csv('GOOG.csv')
+df_fb = pd.read_csv('META.csv')
+
+print(clr.S+'Apple Stock Prices\n------------------'+clr.E)
+display(df_apple.head())
+print(clr.S+'Google Stock Prices\n-------------------'+clr.E)
+display(df_google.head())
+print(clr.S+'Facebook Stock Prices\n---------------------'+clr.E)
+display(df_fb.head())
+
+
+print(clr.S+'Apple stock prices\n'+clr.E)
+print('Null values:', df_apple.isnull().values.sum())
+print('NA values:', df_apple.isna().values.any())
+print('---------------------\n')
+print(clr.S+'Google stock prices\n'+clr.E)
+print('Null values:', df_google.isnull().values.sum())
+print('NA values:', df_google.isna().values.any())
+print('---------------------\n')
+print(clr.S+'Facebook stock prices\n'+clr.E)
+print('Null values:', df_fb.isnull().values.sum())
+print('NA values:', df_fb.isna().values.any())
+
+data_a = df_apple[['Date','Open']]
+data_g = df_google[['Date','Open']]
+data_f = df_fb[['Date','Open']]
+
+print(clr.S+'Apple Stock OPEN Prices\n---------------------'+clr.E)
+display(data_a.head())
+print(clr.S+'Google Stock OPEN Prices\n---------------------'+clr.E)
+display(data_g.head())
+print(clr.S+'Facebook Stock OPEN Prices\n----------------------'+clr.E)
+display(data_f.head())
+
+df_merge = pd.merge(data_a,data_g,on = 'Date',how = 'left')
+df_merge = pd.merge(df_merge,data_f,on = 'Date',how = 'left')
+df_merge.columns = ['Date','APPL_Open','GOOG_Open','META_Open']
+
+# Convert dtype of the 'Date' column
+df_merge['Date'] = df_merge['Date'].apply(pd.to_datetime)
+
+# Display the dataframe
+display(df_merge.head())
+print(clr.S+'Total number of traiding days:'+clr.E,df_merge.shape[0])
+
+import plotly.io as pio
+pio.renderers.default='notebook'
+
+plt.figure(figsize = (12,10))
+
+fig = px.line(df_merge, x = df_merge['Date'], y = df_merge.columns)
+fig.update_layout(
+    title = 'Stock Open Prices of Apple, Google, and Facebook',                                         
+    font_color = '#1B6091',
+    title_font_color = 'red',    
+    xaxis_title = 'Date',
+    yaxis_title = 'Price',
+    legend_title = 'Company',
+    font = dict(family = 'Courier New, monospace', size=15)) 
+fig.show('notebook');
+
+df_merge['APPL_daily_return'] = df_merge.APPL_Open.pct_change(1) * 100 #for ONE DAY lookback
+df_merge['GOOG_daily_return'] = df_merge.GOOG_Open.pct_change(1) * 100
+df_merge['META_daily_return'] = df_merge.META_Open.pct_change(1) * 100
+df_merge.head()
+
+fig=make_subplots(specs = [[{"secondary_y":False}]])
+fig.add_trace(go.Scatter(x = df_merge['Date'],y = df_merge['APPL_daily_return'],name = 'Apple'))
+fig.add_trace(go.Scatter(x = df_merge['Date'],y = df_merge['GOOG_daily_return'],name = 'Google'))
+fig.add_trace(go.Scatter(x = df_merge['Date'],y = df_merge['META_daily_return'],name = 'Facebook'))
+fig.update_layout(autosize = False, width = 1200, height = 800,
+                  title_text = 'Daily Return',                                     
+                  font_color = '#1B6091',
+                  title_font_color = 'red',
+                  legend_title = 'Company',
+                  font = dict(family = 'Courier New, monospace', size=15))  
+fig.update_xaxes(title_text = 'Date')
+fig.update_yaxes(title_text = 'Change price %')
+fig.show('notebook')
+
+
+df_merge['APPL shift year'] = df_merge['APPL_Open'].shift(252) 
+df_merge['APPL Yearly Growth'] = (df_merge['APPL_Open'] - df_merge['APPL shift year']) * 100 / df_merge['APPL shift year']
+
+df_merge['GOOG shift year'] = df_merge['GOOG_Open'].shift(252) 
+df_merge['GOOG Yearly Growth'] = (df_merge['GOOG_Open'] - df_merge['GOOG shift year']) * 100 / df_merge['GOOG shift year']
+
+df_merge['META shift year'] = df_merge['META_Open'].shift(252)
+df_merge['META Yearly Growth'] = (df_merge['META_Open'] - df_merge['META shift year']) * 100 / df_merge['META shift year']
+
+df_merge
+
+
+# Plot Yearly Growth
+fig=make_subplots(specs = [[{"secondary_y":False}]])
+fig.add_trace(go.Scatter(x = df_merge['Date'][252:], y = df_merge['APPL Yearly Growth'][252:], name = 'Apple'))
+fig.add_trace(go.Scatter(x = df_merge['Date'][252:], y = df_merge['GOOG Yearly Growth'][252:], name = 'Google'))
+fig.add_trace(go.Scatter(x = df_merge['Date'][252:], y = df_merge['META Yearly Growth'][252:], name = 'Facebook'))
+
+fig.update_layout(autosize = False, width = 1200,
+                  height = 800, title_text = 'Yearly Growth', 
+                  font_color ='#1B6091',
+                  title_font_color ='red',
+                  legend_title = 'Company',
+                  font = dict(family = 'Courier New, monospace', size=15))
+fig.update_xaxes(title_text = 'Date')
+fig.update_yaxes(title_text = 'Yearly Growth %')
+fig.show('notebook')
+
+
+
+# Create model
+model = LinearRegression()
+def modscore(x,y):
+    R2 = model.score(x,y)
+    return R2
+
+df_a = pd.DataFrame(df_merge['APPL_Open'])
+df_g = pd.DataFrame(df_merge['GOOG_Open'])
+df_f = pd.DataFrame(df_merge['META_Open'])
+
+# Fit model: Apple vs Google
+model.fit(df_a, df_g).predict(df_a)
+model.score(df_a, df_g)
+score = modscore(df_a, df_g)
+print(clr.S+'Apple vs Google: \n R2 = '+clr.E+str(round(score,4)))
+print (clr.S+'----------------'+clr.E)
+
+# Fit model: Apple vs Facebook
+model.fit(df_a, df_f).predict(df_a)
+model.score(df_a, df_f)
+score1 = modscore(df_a,df_f)
+print(clr.S+'Apple vs Facebook: \n R2 = '+clr.E+str(round(score1,4)))
+print (clr.S+'----------------'+clr.E)
+
+# Fit model: Google vs Facebook
+model.fit(df_g, df_f).predict(df_g)
+model.score(df_g, df_f)
+score2 = modscore(df_g,df_f)
+print(clr.S+'Google vs Facebook: \n R2 = '+clr.E+str(round(score2,4)))
+print (clr.S+'----------------'+clr.E)
+
